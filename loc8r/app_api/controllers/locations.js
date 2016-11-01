@@ -1,10 +1,13 @@
+//we need Mongoose
 var mongoose = require('mongoose');
 var Loc = mongoose.model('Location');
 
-var sendJSONresponse = function(res, status, content) {
-  res.status(status);
-  res.json(content);
-};
+//utility method for the module
+var sendJSONresponse = function(res, status, content)
+{
+    res.status(status);
+    res.json(content);
+}
 
 var theEarth = (function() {
   var earthRadius = 6371; // km, miles is 3959
@@ -16,14 +19,25 @@ var theEarth = (function() {
   var getRadsFromDistance = function(distance) {
     return parseFloat(distance / earthRadius);
   };
+  
+  var mToKm = function(distance){
+    return parseFloat(distance / 1000);
+  };
+  
+  var kmToM = function(distance){
+    return parseFloat(distance * 1000);
+  };  
 
   return {
     getDistanceFromRads: getDistanceFromRads,
-    getRadsFromDistance: getRadsFromDistance
+    getRadsFromDistance: getRadsFromDistance,
+    kmToM : kmToM,
+    mToKm : mToKm
   };
 })();
 
 /* GET list of locations */
+//very helpful in debugging the apparent problem with Simon's code: http://stackoverflow.com/questions/37149944/mongoose-geonear-maxdistance-results
 module.exports.locationsListByDistance = function(req, res) {
   var lng = parseFloat(req.query.lng);
   var lat = parseFloat(req.query.lat);
@@ -34,10 +48,11 @@ module.exports.locationsListByDistance = function(req, res) {
   };
   var geoOptions = {
     spherical: true,
-    maxDistance: theEarth.getRadsFromDistance(maxDistance),
+    //maxDistance: theEarth.getRadsFromDistance(maxDistance),
+    maxDistance: theEarth.kmToM(maxDistance),
     num: 10
   };
-  if ((!lng && lng!==0) || (!lat && lat!==0) || ! maxDistance) {
+  if (!lng || !lat || !maxDistance) {
     console.log('locationsListByDistance missing params');
     sendJSONresponse(res, 404, {
       "message": "lng, lat and maxDistance query parameters are all required"
@@ -62,7 +77,8 @@ var buildLocationList = function(req, res, results, stats) {
   var locations = [];
   results.forEach(function(doc) {
     locations.push({
-      distance: theEarth.getDistanceFromRads(doc.dis),
+      //distance: theEarth.getDistanceFromRads(doc.dis),
+      distance: theEarth.mToKm(doc.dis),
       name: doc.obj.name,
       address: doc.obj.address,
       rating: doc.obj.rating,
